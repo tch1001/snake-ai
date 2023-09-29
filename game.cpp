@@ -7,6 +7,7 @@
 #define OUT_OF_BOUNDS 1
 #define EAT_OWN_TAIL 2
 
+
 using namespace std;
 
 typedef pair<int, int> pi;
@@ -32,7 +33,7 @@ class GameState{
 		}
 		board[head.first][head.second] = 'H';
 		for(int i=0; i<tails.size(); ++i)
-			board[tails[i].first][tails[i].second] = 'T';
+			board[tails[i].first][tails[i].second] = (i%10)+'0';
 		if(apple.first != -1 && apple.second != -1)
 			board[apple.first][apple.second] = '@';
 		for(int i=0; i<height; ++i){
@@ -57,8 +58,8 @@ class Game{
 		// careful with pass by value or sth
 		this->history.push_back(GameState(width, height, pi(0,0), pi(1,1), nothing));
 	}
-	int make_move(char move){
-		GameState last = this->history.back();
+	int try_move(GameState *g, char move){ // dont push to history yet
+		GameState last = *g;
 		pi head = last.head;
 		pi apple = last.apple;
 		deque<pi> tails = last.tails;
@@ -67,15 +68,13 @@ class Game{
 		else if(move == 'L') head.second -= 1;
 		else if(move == 'R') head.second += 1;
 		if(head.first < 0 || head.first >= height || head.second < 0 || head.second >= width){
-			throw "Out of bounds";
-			return OUT_OF_BOUNDS; 
+			return OUT_OF_BOUNDS;
 		}
 		for(int i=0; i<tails.size(); ++i){
 			if(head.first == tails[i].first && head.second == tails[i].second){
-				throw "Eat own tail";
 				return EAT_OWN_TAIL;
 			}
-		}
+		}	
 		tails.push_front(last.head);
 		tails.pop_back();
 		if(head.first == apple.first && head.second == apple.second){
@@ -85,7 +84,18 @@ class Game{
 			apple.first = rand() % height;
 			apple.second = rand() % width;
 		}
-		this->history.push_back(GameState(width, height, head, apple, tails));
+		GameState next(width, height, head, apple, tails);
+		*g = next;
+		return OK;
+	}
+	int make_move(char move){
+		GameState nextState = this->history.back();
+		int trial = this->try_move(&nextState, move);
+		if(trial != OK){
+			if(trial == OUT_OF_BOUNDS) throw "OUT_OF_BOUNDS";
+			if(trial == EAT_OWN_TAIL) throw "EAT_OWN_TAIL";
+		}
+		this->history.push_back(nextState);
 		this->display();
 		return OK;
 	}
@@ -93,7 +103,7 @@ class Game{
 		this->history.back().display();
 	}
 };
-int main(){
+void test(){
 	Game game(20, 10);
 	game.display();
 	string moves = "";
